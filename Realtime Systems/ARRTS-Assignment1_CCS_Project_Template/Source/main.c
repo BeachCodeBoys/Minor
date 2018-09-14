@@ -57,7 +57,7 @@ int main(void) {
 
     }//	*/
 
-
+// maak af dan kklijer
 
 
 	return 0;
