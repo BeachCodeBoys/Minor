@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <FreeRTOS.h>
 #include <task.h>
+#include <inttypes.h>
 
 
 /*
@@ -8,90 +9,87 @@
  * Assignment 3- Project Template
 
      */
-void init(void);
-void initClock(void);
-void initTimers(void);
+
+#define SEC             1100000
+#define ALL_OFF         0
+#define RIGHT_HALF      9
+#define TOGGLE          10
+#define TIMER_COUNTER   96000   //500Hz
+
+
+uint32_t klok = 0;
+volatile uint32_t i, j, timerCounter = 0, blinkTimes = 0, times2blink, blinkSpeed = 1000;
+
+
+extern void init(void);
 void delay(){
     for(i=0; i<SEC; i++){
     }
 }
 void LEDClockWise(void);
 void All8LEDS_Blink(int nTimes);
+extern void turnLED(uint8_t led);
 void vProxSensor(void*);
+void leesSensor(void);
 
 int main(void) {
     WDTCTL = WDTPW | WDTHOLD;  /* Stop watchdog timer */
 
     init();
+    klok = CS_getMCLK();
+    printf("Kloksnelheid is: %" PRIu32 "\n", klok);
 
-    while(1) {
+    CAPTIO0CTL = (CAPTIOPOSEL_4 + CAPTIOPISEL_6 + CAPTIOEN);
+
+    while (1) {
+    uint8_t pinWaarde = GPIO_getInputPinValue(GPIO_PORT_P4, GPIO_PIN6);
+    //printf("%d\n", pinWaarde);
+    if (pinWaarde > 0) {
+        printf("hi");
+    }
+    //LEDClockWise();
+    //All8LEDS_Blink(2);
 
     }
+
 
 
 	return 0;
 }
 
-void init(void) {
-    initClock();
-    initTImers();
+void T32_INT1_IRQHandler(void)
+{
+    MAP_Timer32_clearInterruptFlag (TIMER32_0_BASE); // Acknowledge Interrupt
 
-    //set LED as output
-    MAP_GPIO_setAsOutputPin(GPIO_PORT_P4,  GPIO_PIN3);
-    MAP_GPIO_setAsOutputPin(GPIO_PORT_P1,  GPIO_PIN5);
-    MAP_GPIO_setAsOutputPin(GPIO_PORT_P1,  GPIO_PIN7);
-    MAP_GPIO_setAsOutputPin(GPIO_PORT_P1,  GPIO_PIN6);
-    MAP_GPIO_setAsOutputPin(GPIO_PORT_P4,  GPIO_PIN1);
+     //reset timerCounter and enable leds for toggle
+    if(timerCounter>blinkSpeed){
+        timerCounter = 0;
+        turnLED(RIGHT_HALF);
+        blinkTimes++;
+        if(blinkTimes > times2blink){   //double blink speed after 5 times blinking
+            blinkSpeed = 500;
+        }
+    }
+     //turns off leds (half of the time)
+    else if(timerCounter>(blinkSpeed/2)){
+        turnLED(ALL_OFF);
+    }
+     //toggle LEDs (turn all leds on)
+    else {
+        turnLED(TOGGLE);
+    }
 
-    //Middle booster pack LED
-    MAP_GPIO_setAsOutputPin(GPIO_PORT_P6,  GPIO_PIN0);
-
-    //pull all LEDs low
-    turnLED(ALL_OFF);
-    GPIO_setOutputLowOnPin(GPIO_PORT_P6,  GPIO_PIN0);
+    timerCounter++;
+    MAP_Timer32_setCount (TIMER32_0_BASE,TIMER_COUNTER);
 }
 
-void initClock(void) {
-        /* Halting WDT and disabling master interrupts */
-    MAP_WDT_A_holdTimer();
-    MAP_Interrupt_disableMaster();
-
-        /* Set the core voltage level to VCORE1 */
-    MAP_PCM_setCoreVoltageLevel(PCM_VCORE1);
-
-        /* Set 2 flash wait states for Flash bank 0 and 1*/
-    MAP_FlashCtl_setWaitState(FLASH_BANK0, 2);
-    MAP_FlashCtl_setWaitState(FLASH_BANK1, 2);
-
-        /* Initializes Clock System */
-    MAP_CS_setDCOCenteredFrequency(CS_DCO_FREQUENCY_48);
-    MAP_CS_initClockSignal(CS_MCLK, CS_DCOCLK_SELECT, CS_CLOCK_DIVIDER_1 );
-    MAP_CS_initClockSignal(CS_HSMCLK, CS_DCOCLK_SELECT, CS_CLOCK_DIVIDER_1 );
-    MAP_CS_initClockSignal(CS_SMCLK, CS_DCOCLK_SELECT, CS_CLOCK_DIVIDER_1 );
-    MAP_CS_initClockSignal(CS_ACLK, CS_REFOCLK_SELECT, CS_CLOCK_DIVIDER_1);
+void T32_INT2_IRQHandler(void)
+{
+    MAP_Timer32_clearInterruptFlag (TIMER32_1_BASE); // Acknowledge Interrupt
+    MAP_GPIO_toggleOutputOnPin (GPIO_PORT_P6,  GPIO_PIN0);
+    MAP_Timer32_setCount (TIMER32_1_BASE,24000000);
 }
 
-void initTimers(void) {
-    WDTCTL = WDTPW | WDTHOLD; /* Stop watchdog timer */
-    MAP_GPIO_setAsOutputPin (GPIO_PORT_P1, GPIO_PIN0);
-    MAP_Timer32_initModule (TIMER32_0_BASE, TIMER32_PRESCALER_1,
-    TIMER32_32BIT,TIMER32_FREE_RUN_MODE);   //timer 1
-    MAP_Timer32_initModule (TIMER32_1_BASE, TIMER32_PRESCALER_1,
-    TIMER32_32BIT,TIMER32_FREE_RUN_MODE);   //timer 2
-
-    MAP_Timer32_setCount (TIMER32_0_BASE,TIMER_COUNTER);    //timer 1
-    MAP_Timer32_setCount (TIMER32_1_BASE,24000000); //timer 2
-    MAP_Interrupt_enableInterrupt (INT_T32_INT1); // Enable timer 32 in NVIC timer 1
-    MAP_Interrupt_enableInterrupt (INT_T32_INT2); // Enable timer 32 in NVIC timer 2
-    MAP_Interrupt_setPriority (INT_T32_INT1, 0x40); // b0100 0000 , sets a priority of 2 timer 1
-    MAP_Interrupt_setPriority (INT_T32_INT2, 0x40); // b0100 0000 , sets a priority of 2 timer 2
-    MAP_Timer32_enableInterrupt (TIMER32_0_BASE); // Enable peripheral (timer 32 module 0) interrupt timer 1
-    MAP_Timer32_enableInterrupt (TIMER32_1_BASE); // Enable peripheral (timer 32 module 0) interrupt timer 2
-    MAP_Timer32_registerInterrupt ( TIMER32_0_INTERRUPT, T32_INT1_IRQHandler ); //Register ISR timer 1
-    MAP_Timer32_registerInterrupt ( TIMER32_1_INTERRUPT, T32_INT2_IRQHandler ); //Register ISR timer 2
-    MAP_Interrupt_enableMaster (); // Enable global interrupt
-    //MAP_Timer32_startTimer (TIMER32_0_BASE, 1); // Start the timer
-}
 
 void LEDClockWise(void){
     for(j = 1; j<=8; j++){
@@ -109,6 +107,12 @@ void All8LEDS_Blink(int nTimes){
     MAP_Timer32_startTimer (TIMER32_1_BASE, 1); // Start the timer 2
 }
 
+
+
 void vProxSensor(void* pvParameters) {
+    MAP_GPIO_setAsOutputPin(GPIO_PORT_P4,  GPIO_PIN6);
+}
+
+void leesSensor() {
 
 }
