@@ -32,7 +32,7 @@ extern void turnLED(uint8_t led);
 void vProxSensor(void*);
 void leesSensor(void);
 
-int main(void) {	//THIS IS THE MAIN COEDE
+int main(void) {	//viezerik
     WDTCTL = WDTPW | WDTHOLD;  /* Stop watchdog timer */
 
     init();
