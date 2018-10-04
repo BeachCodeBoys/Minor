@@ -1,4 +1,4 @@
-#include <stdio.h>
+ #include <stdio.h>
 #include <FreeRTOS.h>
 #include <task.h>
 #include <inttypes.h>
@@ -40,22 +40,18 @@ int main(void) {
     printf("Kloksnelheid is: %" PRIu32 "\n", klok);
 
     CAPTIO0CTL = (CAPTIOPOSEL_4 + CAPTIOPISEL_6 + CAPTIOEN);
-
+    TA2CTL = TASSEL_3;
+    MAP_WDT_A_initIntervalTimer(WDT_A_CLOCKSOURCE_SMCLK, WDT_A_CLOCKITERATIONS_32K);
     while (1) {
-    uint8_t pinWaarde = GPIO_getInputPinValue(GPIO_PORT_P4, GPIO_PIN6);
+    //uint8_t pinWaarde = GPIO_getInputPinValue(GPIO_PORT_P4, GPIO_PIN6);
     //printf("%d\n", pinWaarde);
-    if (pinWaarde > 0) {
-        printf("hi");
+
     }
     //LEDClockWise();
     //All8LEDS_Blink(2);
-
+        return 0;
     }
 
-
-
-	return 0;
-}
 
 void T32_INT1_IRQHandler(void)
 {
