@@ -39,12 +39,16 @@ int main(void) {	//viezerik
     klok = CS_getMCLK();
     printf("Kloksnelheid is: %" PRIu32 "\n", klok);
 
+    TA2CTL |= 1 << TACLR;
     CAPTIO0CTL = (CAPTIOPOSEL_4 + CAPTIOPISEL_6 + CAPTIOEN);
     TA2CTL = TASSEL_3;
-    MAP_WDT_A_initIntervalTimer(WDT_A_CLOCKSOURCE_SMCLK, WDT_A_CLOCKITERATIONS_32K);
+    MAP_GPIO_setAsInputPin(GPIO_PORT_P4, GPIO_PIN6);
+    //MAP_WDT_A_initIntervalTimer(WDT_A_CLOCKSOURCE_SMCLK, WDT_A_CLOCKITERATIONS_32K);
+
     while (1) {
-    //uint8_t pinWaarde = GPIO_getInputPinValue(GPIO_PORT_P4, GPIO_PIN6);
-    //printf("%d\n", pinWaarde);
+    uint8_t pinWaarde = GPIO_getInputPinValue(GPIO_PORT_P4, GPIO_PIN6);
+    printf("Timer value: %d, Input value: %d\n", TA2R, pinWaarde);
+
 
     }
     //LEDClockWise();
@@ -106,7 +110,7 @@ void All8LEDS_Blink(int nTimes){
 
 
 void vProxSensor(void* pvParameters) {
-    MAP_GPIO_setAsOutputPin(GPIO_PORT_P4,  GPIO_PIN6);
+
 }
 
 void leesSensor() {
